@@ -779,7 +779,7 @@ int main ( int argc, char **argv ) {
 				if (e) {
 					ev = strtol(e+1, NULL, 10);
 				}
-				fprintf(stdout,"E = %d\n", ev);
+				if (g.debug) fprintf(stdout,"E = %d\n", ev);
 			}
 			if (g.debug) fprintf(stdout,"%s\n%s\n", line1, line2);
 		}
