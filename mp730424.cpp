@@ -718,7 +718,6 @@ int main ( int argc, char **argv ) {
 		double td = 0.0;
 		double v = 0.0;
 		int ev = 0;
-		int end_of_frame_received = 0;
 		uint8_t range;
 		uint8_t dpp = 0;
 		ssize_t bytes_read = 0;
@@ -793,10 +792,13 @@ int main ( int argc, char **argv ) {
 			snprintf(buf_func,sizeof(buf_func), "Diode");
 			snprintf(buf_units,sizeof(buf_units) ,"V");
 		} 
-		else if (strncmp("\"VOLT",buf_func, 5)==0) {
+		else if (strncmp("\"VOLT AC\"",buf_func, 6)==0) {
 			snprintf(buf_func,sizeof(buf_func), "Volts");
-			snprintf(buf_units,sizeof(buf_units) ,"V");
-
+			snprintf(buf_units,sizeof(buf_units) ,"VAC");
+		} 
+		else if (strncmp("\"VOLT\"",buf_func, 6)==0) {
+			snprintf(buf_func,sizeof(buf_func), "Volts");
+			snprintf(buf_units,sizeof(buf_units) ,"VDC");
 		} 
 		else if (strncmp("\"CURR",buf_func, 5)==0) {
 			snprintf(buf_func,sizeof(buf_func), "Current");
