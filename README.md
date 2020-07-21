@@ -1,26 +1,24 @@
-# MP7100-OSD 
-MP7100-OSD - GUI windowed application
+# MP730424-OSD 
+MP730424-OSD - GUI windowed application
 
 # Requirements
 
 You will require the SDL2 development lib in linux
 
-Your linux kernel needs to support the USBTMC protocol, most 
-reasonably modern kernels already have this.
 
 # Setup
 
 Build	 
 
 	(linux) make
-	(windows binary, on linux) make -f Makefile.win mp7100-win
+	(windows binary, on linux) make -f Makefile.win mp730424-win
 	
 # Usage
 	
    
 Run from the command line
 
-	sudo ./mp7100-osd -p /dev/usbtmc2
+	sudo ./mp730424-osd -p /dev/ttyUSB0 -s 115200:8n1
 
 
 
