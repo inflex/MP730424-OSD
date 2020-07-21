@@ -193,8 +193,6 @@ void show_help(void) {
 			"By Paul L Daniels / pldaniels@gmail.com\r\n"
 			"Build %d / %s\r\n"
 			"\r\n"
-			" [-p <usbtmc path, ie /dev/usbtmc2>] \r\n"
-			"\r\n"
 			"\t-h: This help\r\n"
 			"\t-d: debug enabled\r\n"
 			"\t-q: quiet output\r\n"
@@ -205,9 +203,9 @@ void show_help(void) {
 			"\t-cb <background colour, 101010>\r\n"
 			"\t-t <interval> (sleep delay between samples, default 100,000us)\r\n"
 			"\t-p <comport>: Set the com port for the meter, eg: -p /dev/ttyUSB0\r\n"
-			"\t-s <[115200:9600|4800|2400|1200]:[7|8][o|e|n][1|2]>, eg: -s 2400:8n1\r\n"
+			"\t-s <[115200|57600|38400|9600|4800|2400]:8[o|e|n][1|2]>, eg: -s 57600:8n1\r\n"
 			"\r\n"
-			"\texample: MP730424 -s 115200:8n1\r\n"
+			"\texample: mp730424 -s 115200:8n1\r\n"
 			, BUILD_VER
 			, BUILD_DATE 
 			);
