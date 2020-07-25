@@ -92,6 +92,7 @@ struct glb {
 	char *com_address;
 	char *serial_parameters_string; // this is the raw from the command line
 	struct serial_params_s serial_params; // this is the decoded version
+	int serial_timeout;
 
 
 	int interval;
@@ -172,6 +173,7 @@ int init(struct glb *g) {
 	g->interval = 100000;
 	g->device = NULL;
 	g->comms_mode = CMODE_NONE;
+	g->serial_timeout = 3;
 
 	g->serial_parameters_string = NULL;
 
@@ -201,9 +203,10 @@ void show_help(void) {
 			"\t-cv <volts colour, a0a0ff>\r\n"
 			"\t-ca <amps colour, ffffa0>\r\n"
 			"\t-cb <background colour, 101010>\r\n"
-			"\t-t <interval> (sleep delay between samples, default 100,000us)\r\n"
-			"\t-p <comport>: Set the com port for the meter, eg: -p /dev/ttyUSB0\r\n"
+			"\t-t <interval>, sleep delay between samples, default 100,000us)\r\n"
+			"\t-p <comport>, Set the com port for the meter, eg: -p /dev/ttyUSB0\r\n"
 			"\t-s <[115200|57600|38400|9600|4800|2400]:8[o|e|n][1|2]>, eg: -s 57600:8n1\r\n"
+			"\t--timeout <seconds>, time to wait for serial response, default 3 seconds\r\n"
 			"\r\n"
 			"\texample: mp730424 -s 115200:8n1\r\n"
 			, BUILD_VER
@@ -242,6 +245,13 @@ int parse_parameters(struct glb *g, int argc, char **argv ) {
 		if (argv[i][0] == '-') {
 			/* parameter */
 			switch (argv[i][1]) {
+
+				case '-':
+					if (strncmp(argv[i], "--timeout", 9)==0) {
+						i++;
+						g->serial_timeout = strtol(argv[i], NULL, 10);
+					}
+					break;
 
 				case 'h':
 					show_help();
@@ -396,6 +406,9 @@ void open_port( struct glb *g ) {
 		exit(1);
 	}
 
+
+	s->newtp.c_cc[VMIN] = 0;
+	s->newtp.c_cc[VTIME] = g->serial_timeout *10; // VTIME is 1/10th's of second
 
 	p = strchr(p,':');
 	if (p) {
@@ -763,7 +776,13 @@ int main ( int argc, char **argv ) {
 		 * END OF DATA ACQUISITION
 		 *
 		 */
-		{
+
+		if ( strlen( buf_func ) == 0 || strlen( buf_value ) == 0 ) {
+			snprintf(line1, sizeof(line1), "NO DATA");
+			snprintf(line2, sizeof(line2), "* * * *");
+		}
+
+		else {
 			if (strncmp(buf_value, "1E+9", 4)==0) {
 				snprintf(line1,sizeof(line1),"Overlimit");
 				flag_ol = 1;
