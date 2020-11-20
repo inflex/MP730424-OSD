@@ -467,8 +467,9 @@ uint8_t a2h( uint8_t a ) {
 	return a;
 }
 
-int data_read( glb *g, char *b, ssize_t s ) {
+ssize_t data_read( glb *g, char *b, ssize_t s ) {
 	ssize_t sz;
+	*b = '\0';
 	if (g->comms_mode == CMODE_USB) {
 		/*
 		 * usb mode read
@@ -500,23 +501,29 @@ int data_read( glb *g, char *b, ssize_t s ) {
 		 *
 		 */
 		int bp = 0;
-		ssize_t bytes_read = 0;
 
 		do {
 			char temp_char;
-			bytes_read = read(g->serial_params.fd, &temp_char, 1);
-			if (bytes_read) {
+			sz = read(g->serial_params.fd, &temp_char, 1);
+			if (sz == -1) {
+				b[0] = '\0';
+				fprintf(stderr,"Cannot read data from serial port - %s\n", strerror(errno));
+				return sz;
+			}
+			if (sz > 0) {
 				b[bp] = temp_char;
 				if (b[bp] == '\n') break;
 				bp++;
-			}
-		} while (bytes_read && bp < s);
+			} else b[bp] = '\0';
+		} while (sz > 0 && bp < s);
 		b[bp] = '\0';
+
 	}
+
 	return sz;
 }
 
-int data_write( glb *g, char *d, ssize_t s ) { 
+ssize_t data_write( glb *g, char *d, ssize_t s ) { 
 	ssize_t sz;
 
 	if (g->comms_mode == CMODE_USB) {
@@ -528,8 +535,7 @@ int data_write( glb *g, char *d, ssize_t s ) {
 		if (sz < 0) {
 			g->error_flag = true;
 			fprintf(stdout,"Error sending USB data: %s\n", strerror(errno));
-			snprintf(d,s-1,"NODATA");
-			//exit(1);
+			return -1;
 		}
 	} else {
 		/*
@@ -540,7 +546,6 @@ int data_write( glb *g, char *d, ssize_t s ) {
 		if (sz < 0) {
 			g->error_flag = true;
 			fprintf(stdout,"Error sending serial data: %s\n", strerror(errno));
-			snprintf(d,s-1,"NODATA");
 		}
 	}
 
@@ -764,12 +769,29 @@ int main ( int argc, char **argv ) {
 			*/
 
 		sz = data_write( &g, g.get_func, strlen(g.get_func)  );
-		usleep(2000);
-		sz = data_read( &g, buf_func, sizeof(buf_func) );
+		if (sz > -1) {
+			sz = data_read( &g, buf_func, sizeof(buf_func) );
+			if (sz > -1) {
+				if (g.debug) fprintf(stdout,"function read: '%s'\n", buf_func);
+				if (strstr(buf_func,"E+") || strstr(buf_func,"E-")) sz = data_read( &g, buf_func, sizeof(buf_func) );
+			} else { 
+				snprintf(buf_func,sizeof(buf_func),"NO DATA");
+			}
+		} else { 
+			snprintf(buf_func,sizeof(buf_func),"NO DATA");
+		}
 
 		sz = data_write( &g, g.meas_value, strlen(g.meas_value));
-		usleep(2000);
-		sz = data_read( &g, buf_value, sizeof(buf_value));
+		if (sz > -1) {
+			sz = data_read( &g, buf_value, sizeof(buf_value));
+			if (sz > -1) {
+				if (g.debug) fprintf(stdout,"value read: '%s'\n", buf_value);
+			} else {
+				snprintf(buf_value,sizeof(buf_value),"NO DATA");
+			}
+		} else {
+			snprintf(buf_value,sizeof(buf_value),"NO DATA");
+		}
 
 		/*
 		 *
@@ -786,14 +808,15 @@ int main ( int argc, char **argv ) {
 			if (strncmp(buf_value, "1E+9", 4)==0) {
 				snprintf(line1,sizeof(line1),"Overlimit");
 				flag_ol = 1;
-			}  else {
+			} else {
 				char *e;
 				flag_ol = 0;
 				td = strtod(buf_value,NULL);
 				snprintf(line1, sizeof(line1), "%f %s", td, buf_units);
-				e = strchr(buf_value,'E');
+				e = strstr(buf_value,"E+");
+				if (!e) e = strstr(buf_value, "E-");
 				if (e) {
-					ev = strtol(e+1, NULL, 10);
+					ev = strtol(e+2, NULL, 10);
 				}
 				if (g.debug) fprintf(stdout,"E = %d\n", ev);
 			}
@@ -802,10 +825,16 @@ int main ( int argc, char **argv ) {
 
 
 		if (strncmp("\"DIOD",buf_func, 5)==0) {
+			//
+			// Work around for firmware fault
+			//
 			snprintf(buf_func,sizeof(buf_func), "Continuity");
 			snprintf(buf_units,sizeof(buf_units) ,"%s", oo);
 		} 
 		else if (strncmp("\"CONT",buf_func, 5)==0) {
+			//
+			// Work around for firmware fault
+			//
 			snprintf(buf_func,sizeof(buf_func), "Diode");
 			snprintf(buf_units,sizeof(buf_units) ,"V");
 		} 
@@ -837,6 +866,10 @@ int main ( int argc, char **argv ) {
 			snprintf(buf_func,sizeof(buf_func), "Temperature");
 			snprintf(buf_units,sizeof(buf_units) ,"%sC", dd);
 		} 
+
+		if (flag_ol == 1) snprintf(line1, sizeof(line1), "OL");
+
+		if (flag_ol == 0) {
 		switch (ev) {
 			case -12:
 			case -11:
@@ -896,6 +929,7 @@ int main ( int argc, char **argv ) {
 				snprintf(line1, sizeof(line1), "% 0.3f%s%s", td, buf_multiplier, buf_units);
 				break;
 
+		}
 		}
 
 		snprintf(line2, sizeof(line2), "%s", buf_func );
